@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import { DoodleSparkle, DoodleSwirl } from "@/components/doodles/Doodles";
 import { ONBOARDING_STEPS } from "./steps";
 
 type Answers = Record<string, string | string[]>;
@@ -61,7 +62,9 @@ export function OnboardingFlow() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-6 py-16">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center overflow-hidden px-6 py-16">
+      <DoodleSwirl className="pointer-events-none absolute -right-4 top-10 h-20 w-20 text-[var(--accent)] opacity-[0.1]" />
+      <DoodleSparkle className="pointer-events-none absolute left-2 bottom-16 h-8 w-8 text-[var(--accent)] opacity-20" />
       <div className="mb-10 flex items-center gap-1.5" role="progressbar" aria-valuenow={index + 1} aria-valuemin={1} aria-valuemax={ONBOARDING_STEPS.length}>
         {ONBOARDING_STEPS.map((s, i) => (
           <div

@@ -1,5 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
+import {
+  DoodleSwirl,
+  DoodleSparkle,
+  DoodleUnderline,
+  DoodleCloud,
+  DoodleStar,
+  DoodleHeart,
+} from "@/components/doodles/Doodles";
 
 export default function Home() {
   return (
@@ -10,6 +18,13 @@ export default function Home() {
         style={{ background: "radial-gradient(circle, var(--glow), transparent 70%)" }}
       />
 
+      {/* hand-drawn doodles scattered around the hero, faint and decorative */}
+      <DoodleSwirl className="pointer-events-none absolute left-[8%] top-[18%] h-16 w-16 text-[var(--accent)] opacity-20 sm:h-20 sm:w-20" />
+      <DoodleSparkle className="pointer-events-none absolute right-[12%] top-[14%] h-8 w-8 text-[var(--accent)] opacity-40" />
+      <DoodleStar className="pointer-events-none absolute left-[14%] bottom-[22%] h-10 w-10 text-[var(--text-secondary)] opacity-20" />
+      <DoodleCloud className="pointer-events-none absolute right-[8%] bottom-[26%] h-14 w-14 text-[var(--text-secondary)] opacity-[0.15] sm:h-20 sm:w-20" />
+      <DoodleHeart className="pointer-events-none absolute left-[6%] top-[52%] h-8 w-8 text-[var(--accent)] opacity-[0.12]" />
+
       <div className="relative z-10 flex max-w-lg flex-col items-center text-center">
         <Image src="/logo.png" alt="Serein" width={72} height={72} className="mb-6 rounded-2xl" priority />
 
@@ -17,11 +32,12 @@ export default function Home() {
           A quiet place to talk
         </span>
 
-        <h1 className="font-display text-5xl italic leading-[1.1] text-[var(--text-primary)] sm:text-6xl">
+        <h1 className="relative font-display text-5xl italic leading-[1.1] text-[var(--text-primary)] sm:text-6xl">
           Serein
+          <DoodleUnderline className="absolute -bottom-3 left-1/2 h-4 w-32 -translate-x-1/2 text-[var(--accent)] opacity-60" />
         </h1>
 
-        <p className="mt-4 text-lg text-[var(--text-secondary)]">
+        <p className="mt-6 text-lg text-[var(--text-secondary)]">
           Talk. Reflect. Connect.
         </p>
 

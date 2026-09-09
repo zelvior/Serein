@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   usage: "usage_limits",
 } as const;
 
+// users/{id}: { id, email, passwordHash, name, createdAt } — only for email/password accounts.
 // conversations/{id}: { userId, title, createdAt, updatedAt }
 // conversations/{id}/messages/{id}: { role, content, createdAt }
 // profiles/{userId}: UserProfile

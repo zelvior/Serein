@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { DoodleCloud } from "@/components/doodles/Doodles";
 
 interface MemoryItem {
   id: string;
@@ -42,7 +43,8 @@ export function MemorySettings() {
           ))}
         </div>
       ) : memories.length === 0 ? (
-        <div role="status" className="mt-10 text-center">
+        <div role="status" className="mt-10 flex flex-col items-center text-center">
+          <DoodleCloud className="mb-3 h-14 w-14 text-[var(--text-secondary)] opacity-30" />
           <p className="text-sm text-[var(--text-secondary)]">
             Nothing saved yet. Serein remembers things naturally as you talk.
           </p>
