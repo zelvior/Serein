@@ -5,6 +5,7 @@ import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
 import { BrowserTTSProvider } from "@/lib/tts/providers/browser";
 import { DoodleSparkle, DoodleSwirl } from "@/components/doodles/Doodles";
+import { ModelPicker } from "./ModelPicker";
 import Image from "next/image";
 import { saveDraft, getDraft, clearDraft, cacheMessages, getCachedMessages } from "@/lib/db/indexeddb";
 
@@ -161,6 +162,7 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
               Offline
             </span>
           )}
+          <ModelPicker />
           <button
             type="button"
             aria-pressed={autoplay}

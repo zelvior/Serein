@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { signIn } from "next-auth/react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export function SignupForm({ callbackUrl }: { callbackUrl: string }) {
   const [name, setName] = useState("");
@@ -65,14 +66,12 @@ export function SignupForm({ callbackUrl }: { callbackUrl: string }) {
       <label className="text-xs text-[var(--text-secondary)]" htmlFor="password">
         Password
       </label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
         required
         minLength={8}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="rounded-lg border border-[var(--border-solid)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
       />
       <p className="text-xs text-[var(--text-secondary)]">At least 8 characters.</p>
       {error && (

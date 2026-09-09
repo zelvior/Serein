@@ -2,9 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
-import { adminDb } from "@/lib/db/firebase.admin";
-import { COLLECTIONS } from "@/lib/db/schema";
-import { verifyPassword } from "@/lib/security/password";
+import { verifyFirebasePassword } from "@/lib/auth/firebasePassword";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -28,14 +26,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = typeof credentials?.password === "string" ? credentials.password : "";
         if (!email || !password) return null;
 
-        const snap = await adminDb.collection(COLLECTIONS.users).where("email", "==", email).limit(1).get();
-        if (snap.empty) return null;
+        const result = await verifyFirebasePassword(email, password);
+        if (!result) return null;
 
-        const userDoc = snap.docs[0];
-        const user = userDoc.data();
-        if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) return null;
-
-        return { id: userDoc.id, email: user.email, name: user.name ?? null };
+        return { id: result.localId, email: result.email };
       },
     }),
   ],

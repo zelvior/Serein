@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { signIn } from "next-auth/react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export function CredentialsForm({ callbackUrl }: { callbackUrl: string }) {
   const [email, setEmail] = useState("");
@@ -42,13 +43,11 @@ export function CredentialsForm({ callbackUrl }: { callbackUrl: string }) {
       <label className="text-xs text-[var(--text-secondary)]" htmlFor="password">
         Password
       </label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
         required
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="rounded-lg border border-[var(--border-solid)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
       />
       {error && (
         <p role="alert" className="text-sm text-red-400">

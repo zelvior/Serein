@@ -1,5 +1,4 @@
 export const COLLECTIONS = {
-  users: "users",
   profiles: "profiles",
   conversations: "conversations",
   messages: "messages", // subcollection under conversations
@@ -8,7 +7,7 @@ export const COLLECTIONS = {
   usage: "usage_limits",
 } as const;
 
-// users/{id}: { id, email, passwordHash, name, createdAt } — only for email/password accounts.
+// Email/password accounts are stored in Firebase Auth directly (not Firestore).
 // conversations/{id}: { userId, title, createdAt, updatedAt }
 // conversations/{id}/messages/{id}: { role, content, createdAt }
 // profiles/{userId}: UserProfile

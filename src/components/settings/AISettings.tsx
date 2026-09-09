@@ -2,7 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { ModelSwitcher } from "./ModelSwitcher";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 interface ConnectedProvider {
   id: string;
@@ -58,8 +58,9 @@ export function AISettings() {
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
         Bring your own API key for a provider Serein can use to generate responses.
       </p>
-
-      <ModelSwitcher />
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+        Switching models happens right in the chat — look for the model name in the chat header.
+      </p>
 
       <h2 className="mt-10 text-sm font-medium text-[var(--text-primary)]">Bring your own key</h2>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -111,13 +112,11 @@ export function AISettings() {
         <label className="text-sm text-[var(--text-secondary)]" htmlFor="api-key">
           API key
         </label>
-        <input
+        <PasswordInput
           id="api-key"
-          type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="sk-…"
-          className="rounded-lg border border-[var(--border-solid)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
         />
         {status === "error" && (
           <p role="alert" className="text-sm text-red-400">
