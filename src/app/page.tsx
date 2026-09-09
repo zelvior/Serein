@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -10,6 +11,8 @@ export default function Home() {
       />
 
       <div className="relative z-10 flex max-w-lg flex-col items-center text-center">
+        <Image src="/logo.png" alt="Serein" width={72} height={72} className="mb-6 rounded-2xl" priority />
+
         <span className="mb-6 text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">
           A quiet place to talk
         </span>
@@ -29,13 +32,13 @@ export default function Home() {
 
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
           <Link
-            href="/onboarding"
+            href="/login?callbackUrl=/onboarding"
             className="rounded-full bg-[var(--accent)] px-7 py-3 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             Begin
           </Link>
           <Link
-            href="/login"
+            href="/login?callbackUrl=/home"
             className="rounded-full border border-[var(--border-solid)] px-7 py-3 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           >
             I already have an account

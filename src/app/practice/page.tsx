@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/config";
 import { SCENARIOS } from "@/lib/prompt/scenarios";
 
-export default function PracticePage() {
+export default async function PracticePage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login?callbackUrl=/practice");
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col px-6 py-16">
       <h1 className="font-display text-3xl italic text-[var(--text-primary)]">Practice</h1>

@@ -13,6 +13,7 @@ export function OnboardingFlow() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const step = ONBOARDING_STEPS[index];
   const isLast = index === ONBOARDING_STEPS.length - 1;
@@ -36,13 +37,24 @@ export function OnboardingFlow() {
       return;
     }
     setSubmitting(true);
+    setError(null);
     try {
       const res = await fetch("/api/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(answers),
       });
-      if (res.ok) router.push("/chat");
+      if (res.status === 401) {
+        router.push("/login?callbackUrl=/onboarding");
+        return;
+      }
+      if (!res.ok) {
+        setError("Something went wrong saving your preferences. Please try again.");
+        return;
+      }
+      router.push("/chat");
+    } catch {
+      setError("Couldn't reach Serein. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +85,12 @@ export function OnboardingFlow() {
           );
         })}
       </div>
+
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-red-400">
+          {error}
+        </p>
+      )}
 
       <div className="mt-12 flex items-center justify-between">
         <button

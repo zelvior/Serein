@@ -22,6 +22,10 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Serein — Talk. Reflect. Connect.",
   description: "A private, personalized AI companion to help you understand yourself and connect better with others.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

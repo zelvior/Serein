@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/config";
 
 const ITEMS = [
   { href: "/chat", label: "Continue talking", desc: "Pick up where you left off." },
@@ -7,7 +9,10 @@ const ITEMS = [
   { href: "/settings", label: "Personalization", desc: "Tone, length, language, and more." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login?callbackUrl=/home");
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-6 py-16">
       <h1 className="font-display text-3xl italic text-[var(--text-primary)]">Welcome back</h1>

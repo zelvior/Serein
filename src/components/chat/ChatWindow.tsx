@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, FormEvent } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
 import { BrowserTTSProvider } from "@/lib/tts/providers/browser";
+import Image from "next/image";
 
 interface Message {
   id: string;
@@ -50,6 +51,16 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
         body: JSON.stringify({ message: text, scenarioId }),
       });
 
+      if (res.status === 401) {
+        window.location.href = "/login?callbackUrl=/chat";
+        return;
+      }
+      if (res.status === 429) {
+        throw new Error("rate_limited");
+      }
+      if (res.status === 503) {
+        throw new Error("no_provider");
+      }
       if (!res.ok || !res.body) {
         throw new Error("request_failed");
       }
@@ -68,8 +79,15 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
       if (autoplay && acc) {
         tts.speak({ text: acc, speed: 1 });
       }
-    } catch {
-      setError("Serein couldn't respond right now. Check your connection and try again.");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "";
+      if (message === "rate_limited") {
+        setError("You've hit today's message limit. Try again tomorrow.");
+      } else if (message === "no_provider") {
+        setError("No AI provider is configured right now. Check Settings → AI.");
+      } else {
+        setError("Serein couldn't respond right now. Check your connection and try again.");
+      }
       setMessages((prev) => prev.filter((m) => m.id !== assistantId));
     } finally {
       setStreaming(false);
@@ -79,7 +97,10 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-        <span className="font-display text-lg italic text-[var(--text-primary)]">Serein</span>
+        <div className="flex items-center gap-2">
+          <Image src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
+          <span className="font-display text-lg italic text-[var(--text-primary)]">Serein</span>
+        </div>
         <div className="flex items-center gap-4">
           <button
             type="button"
