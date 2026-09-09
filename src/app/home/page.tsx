@@ -1,0 +1,28 @@
+import Link from "next/link";
+
+const ITEMS = [
+  { href: "/chat", label: "Continue talking", desc: "Pick up where you left off." },
+  { href: "/practice", label: "Practice a conversation", desc: "Roleplay a real moment before it happens." },
+  { href: "/settings/memory", label: "Memory", desc: "See what Serein remembers." },
+  { href: "/settings", label: "Personalization", desc: "Tone, length, language, and more." },
+];
+
+export default function HomePage() {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-6 py-16">
+      <h1 className="font-display text-3xl italic text-[var(--text-primary)]">Welcome back</h1>
+      <div className="mt-8 flex flex-col gap-2">
+        {ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-xl border border-[var(--border-solid)] px-5 py-4 transition-colors hover:bg-[var(--surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+          >
+            <p className="text-sm font-medium text-[var(--text-primary)]">{item.label}</p>
+            <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{item.desc}</p>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}
