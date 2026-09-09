@@ -9,7 +9,7 @@ export default function ProfileSettingsPage() {
         Your communication style, tone, and goals shape how Serein talks with you.
       </p>
       <Link
-        href="/onboarding"
+        href="/onboarding?retake=1"
         className="mt-6 inline-block rounded-full border border-[var(--border-solid)] px-5 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface)]"
       >
         Retake preferences

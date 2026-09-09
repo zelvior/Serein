@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect, FormEvent } from "react";
+import { useRef, useState, useEffect, FormEvent, KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
+import { ChatSidebar } from "./ChatSidebar";
 import { BrowserTTSProvider } from "@/lib/tts/providers/browser";
 import { DoodleSparkle, DoodleSwirl } from "@/components/doodles/Doodles";
 import { ModelPicker } from "./ModelPicker";
@@ -16,33 +18,66 @@ interface Message {
 }
 
 interface ChatWindowProps {
+  conversationId?: string | null;
   scenarioId?: string;
   placeholder?: string;
   emptyLabel?: string;
+  showSidebar?: boolean;
 }
 
 const tts = new BrowserTTSProvider();
 
-export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyLabel = "What's on your mind?" }: ChatWindowProps) {
-  const draftKey = `draft:${scenarioId ?? "default"}`;
-  const cacheKey = `cache:${scenarioId ?? "default"}`;
+export function ChatWindow({
+  conversationId: initialConversationId = null,
+  scenarioId,
+  placeholder = "Say anything…",
+  emptyLabel = "What's on your mind?",
+  showSidebar = false,
+}: ChatWindowProps) {
+  const router = useRouter();
+  const draftKey = `draft:${scenarioId ?? initialConversationId ?? "new"}`;
+  const cacheKey = `cache:${scenarioId ?? initialConversationId ?? "new"}`;
 
+  const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoplay, setAutoplay] = useState(false);
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore cached conversation + unsent draft on mount (offline-friendly).
+  // Load an existing conversation's messages from the server (source of truth),
+  // falling back to the IndexedDB cache when offline or while it loads.
   useEffect(() => {
+    let cancelled = false;
+
     getCachedMessages(cacheKey).then((cached) => {
-      if (cached.length) setMessages(cached);
+      if (!cancelled && cached.length) setMessages(cached);
     });
+
+    if (initialConversationId) {
+      fetch(`/api/conversations/${initialConversationId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!cancelled && d?.messages) {
+            setMessages(
+              d.messages.map((m: { id: string; role: "user" | "assistant"; content: string }) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
+
     getDraft(draftKey).then((draft) => {
-      if (draft?.text) setInput(draft.text);
+      if (!cancelled && draft?.text) setInput(draft.text);
     });
 
     const goOnline = () => setIsOnline(true);
@@ -50,11 +85,12 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
     return () => {
+      cancelled = true;
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialConversationId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,8 +111,15 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
     }, 400);
   }
 
-  async function sendMessage(e: FormEvent) {
-    e.preventDefault();
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  async function sendMessage(e?: FormEvent) {
+    e?.preventDefault();
     const text = input.trim();
     if (!text || streaming) return;
 
@@ -97,7 +140,7 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, scenarioId }),
+        body: JSON.stringify({ message: text, conversationId, scenarioId }),
       });
 
       if (res.status === 401) {
@@ -112,6 +155,15 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
       }
       if (!res.ok || !res.body) {
         throw new Error("request_failed");
+      }
+
+      const newConversationId = res.headers.get("X-Conversation-Id");
+      if (newConversationId && newConversationId !== conversationId) {
+        setConversationId(newConversationId);
+        setSidebarRefreshKey((k) => k + 1);
+        if (!scenarioId) {
+          router.replace(`/chat/${newConversationId}`, { scroll: false });
+        }
       }
 
       const reader = res.body.getReader();
@@ -147,86 +199,120 @@ export function ChatWindow({ scenarioId, placeholder = "Say anything…", emptyL
   }
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden">
-      <DoodleSwirl className="pointer-events-none absolute -left-6 top-16 h-24 w-24 text-[var(--text-secondary)] opacity-[0.07]" />
-      <DoodleSparkle className="pointer-events-none absolute right-8 top-24 h-10 w-10 text-[var(--accent)] opacity-20" />
+    <div className="flex h-screen">
+      {showSidebar && (
+        <ChatSidebar
+          activeConversationId={conversationId}
+          refreshKey={sidebarRefreshKey}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <header className="relative z-10 flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
-          <span className="font-display text-lg italic text-[var(--text-primary)]">Serein</span>
-        </div>
-        <div className="flex items-center gap-4">
-          {!isOnline && (
-            <span className="rounded-full border border-[var(--border-solid)] px-3 py-1 text-xs text-[var(--text-secondary)]">
-              Offline
-            </span>
-          )}
-          <ModelPicker />
-          <button
-            type="button"
-            aria-pressed={autoplay}
-            onClick={() => setAutoplay((v) => !v)}
-            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              autoplay
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-[var(--border-solid)] text-[var(--text-secondary)]"
-            }`}
-          >
-            {autoplay ? "Voice on" : "Voice off"}
-          </button>
-          <a href="/settings" className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            Settings
-          </a>
-        </div>
-      </header>
+      <div className="relative flex h-screen flex-1 flex-col overflow-hidden">
+        <DoodleSwirl className="pointer-events-none absolute -left-6 top-16 h-24 w-24 text-[var(--text-secondary)] opacity-[0.07]" />
+        <DoodleSparkle className="pointer-events-none absolute right-8 top-24 h-10 w-10 text-[var(--accent)] opacity-20" />
 
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
-          {messages.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center py-24 text-center">
-              <DoodleSparkle className="mb-4 h-8 w-8 text-[var(--accent)] opacity-70" />
-              <p className="font-display text-2xl italic text-[var(--text-secondary)]">
-                {emptyLabel}
+        <header className="relative z-10 flex items-center justify-between border-b border-[var(--border)] px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            {showSidebar && (
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open conversations"
+                className="rounded-md p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:hidden"
+              >
+                <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M3 5h14M3 10h14M3 15h14" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+            <Image src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
+            <span className="font-display text-lg italic text-[var(--text-primary)]">Serein</span>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {!isOnline && (
+              <span className="hidden rounded-full border border-[var(--border-solid)] px-3 py-1 text-xs text-[var(--text-secondary)] sm:inline">
+                Offline
+              </span>
+            )}
+            <ModelPicker />
+            <button
+              type="button"
+              aria-pressed={autoplay}
+              onClick={() => setAutoplay((v) => !v)}
+              className={`hidden rounded-full border px-3 py-1 text-xs transition-colors sm:inline ${
+                autoplay
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-[var(--border-solid)] text-[var(--text-secondary)]"
+              }`}
+            >
+              {autoplay ? "Voice on" : "Voice off"}
+            </button>
+            <a href="/settings" className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+              Settings
+            </a>
+          </div>
+        </header>
+
+        <div className="relative z-10 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+          <div className="mx-auto flex max-w-2xl flex-col gap-4">
+            {messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center py-24 text-center">
+                <DoodleSparkle className="mb-4 h-8 w-8 text-[var(--accent)] opacity-70" />
+                <p className="font-display text-2xl italic text-[var(--text-secondary)]">
+                  {emptyLabel}
+                </p>
+              </div>
+            )}
+            {messages.map((m) =>
+              m.role === "assistant" && m.content === "" && streaming ? (
+                <TypingIndicator key={m.id} />
+              ) : (
+                <MessageBubble key={m.id} role={m.role} content={m.content} />
+              )
+            )}
+            {error && (
+              <p role="alert" className="text-center text-sm text-red-400">
+                {error}
               </p>
-            </div>
-          )}
-          {messages.map((m) =>
-            m.role === "assistant" && m.content === "" && streaming ? (
-              <TypingIndicator key={m.id} />
-            ) : (
-              <MessageBubble key={m.id} role={m.role} content={m.content} />
-            )
-          )}
-          {error && (
-            <p role="alert" className="text-center text-sm text-red-400">
-              {error}
-            </p>
-          )}
-          <div ref={bottomRef} />
+            )}
+            <div ref={bottomRef} />
+          </div>
         </div>
-      </div>
 
-      <form onSubmit={sendMessage} className="relative z-10 border-t border-[var(--border)] px-4 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-full border border-[var(--border-solid)] bg-[var(--surface)] px-4 py-2">
-          <input
-            value={input}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder={placeholder}
-            aria-label="Message Serein"
-            disabled={streaming}
-            className="flex-1 bg-transparent text-[15px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || streaming}
-            aria-label="Send message"
-            className="rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-30"
-          >
-            Send
-          </button>
-        </div>
-      </form>
+        <form onSubmit={sendMessage} className="relative z-10 border-t border-[var(--border)] px-4 py-4 sm:px-8">
+          <div className="mx-auto flex max-w-2xl items-end gap-2 rounded-3xl border border-[var(--border-solid)] bg-[var(--surface)] px-4 py-2.5">
+            <textarea
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              aria-label="Message Serein"
+              disabled={streaming}
+              rows={1}
+              className="max-h-40 flex-1 resize-none bg-transparent text-[15px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
+              style={{ height: "auto" }}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || streaming}
+              aria-label="Send message"
+              className="mb-0.5 shrink-0 rounded-full bg-[var(--accent)] px-4 py-1.5 text-sm font-medium text-[var(--background)] transition-opacity hover:opacity-90 disabled:opacity-30"
+            >
+              Send
+            </button>
+          </div>
+          <p className="mx-auto mt-1.5 max-w-2xl text-center text-[11px] text-[var(--text-secondary)]">
+            Enter to send · Shift+Enter for a new line
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

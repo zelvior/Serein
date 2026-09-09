@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth/config";
 import {
   DoodleSwirl,
   DoodleSparkle,
@@ -9,7 +11,12 @@ import {
   DoodleHeart,
 } from "@/components/doodles/Doodles";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+  // Returning, already-authenticated visitors go straight in — /chat itself
+  // redirects to onboarding only if they somehow don't have a profile yet.
+  if (session?.user) redirect("/chat");
+
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
       <div

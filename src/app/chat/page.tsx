@@ -11,5 +11,5 @@ export default async function ChatPage() {
   const profileSnap = await adminDb.collection(COLLECTIONS.profiles).doc(session.user.id).get();
   if (!profileSnap.exists) redirect("/onboarding");
 
-  return <ChatWindow />;
+  return <ChatWindow showSidebar />;
 }

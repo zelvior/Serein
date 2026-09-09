@@ -14,6 +14,7 @@ import { SCENARIOS, PRACTICE_SYSTEM_SUFFIX } from "@/lib/prompt/scenarios";
 import { detectCrisis, CRISIS_RESPONSE_INSTRUCTIONS } from "@/lib/safety/crisis";
 import { extractMemories } from "@/lib/memory/extract";
 import { persistInferredMemories } from "@/lib/memory/persist";
+import { isOwner } from "@/lib/security/permissions";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
   const userId = session.user.id;
 
-  const { message, conversationId, scenarioId } = await req.json();
+  const { message, conversationId: requestedConversationId, scenarioId } = await req.json();
   if (!validateMessage(message)) {
     return new Response("invalid_message", { status: 400 });
   }
@@ -42,6 +43,31 @@ export async function POST(req: NextRequest) {
   }
   const profile = profileSnap.data() as UserProfile;
 
+  const scenario = SCENARIOS.find((s) => s.id === scenarioId);
+
+  // Practice/roleplay sessions are never saved as conversations. Regular chat
+  // always has one: reuse the given id if the caller owns it, otherwise
+  // (or if none was given) start a fresh conversation.
+  let conversationId: string | null = null;
+  if (!scenario) {
+    if (requestedConversationId) {
+      const doc = await adminDb.collection(COLLECTIONS.conversations).doc(requestedConversationId).get();
+      if (doc.exists && isOwner(doc.data()?.userId, userId)) {
+        conversationId = doc.id;
+      }
+    }
+    if (!conversationId) {
+      const now = new Date().toISOString();
+      const ref = await adminDb.collection(COLLECTIONS.conversations).add({
+        userId,
+        title: message.slice(0, 60),
+        createdAt: now,
+        updatedAt: now,
+      });
+      conversationId = ref.id;
+    }
+  }
+
   const memorySnap = await adminDb
     .collection(COLLECTIONS.memories)
     .where("userId", "==", userId)
@@ -50,7 +76,6 @@ export async function POST(req: NextRequest) {
   const memories = memorySnap.docs.map((d) => d.data() as MemoryItem);
   const relevant = selectRelevantMemories(memories, message);
 
-  const scenario = SCENARIOS.find((s) => s.id === scenarioId);
   const isCrisis = detectCrisis(message);
 
   const contextParts = [
@@ -90,6 +115,14 @@ export async function POST(req: NextRequest) {
     return new Response("no_provider_configured", { status: 503 });
   }
 
+  if (conversationId) {
+    await adminDb
+      .collection(COLLECTIONS.conversations)
+      .doc(conversationId)
+      .collection(COLLECTIONS.messages)
+      .add({ role: "user", content: message, createdAt: new Date().toISOString() });
+  }
+
   const encoder = new TextEncoder();
   let full = "";
 
@@ -105,11 +138,10 @@ export async function POST(req: NextRequest) {
       } finally {
         controller.close();
         if (conversationId && full) {
-          await adminDb
-            .collection(COLLECTIONS.conversations)
-            .doc(conversationId)
-            .collection(COLLECTIONS.messages)
-            .add({ role: "assistant", content: full, createdAt: new Date().toISOString() });
+          const now = new Date().toISOString();
+          const convRef = adminDb.collection(COLLECTIONS.conversations).doc(conversationId);
+          await convRef.collection(COLLECTIONS.messages).add({ role: "assistant", content: full, createdAt: now });
+          await convRef.set({ updatedAt: now }, { merge: true });
         }
         // Learned-context memory: skip during crisis/practice exchanges, non-blocking best-effort.
         if (full && !isCrisis && !scenario) {
@@ -122,6 +154,9 @@ export async function POST(req: NextRequest) {
   });
 
   return new Response(readable, {
-    headers: { "Content-Type": "text/plain; charset=utf-8" },
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...(conversationId ? { "X-Conversation-Id": conversationId } : {}),
+    },
   });
 }

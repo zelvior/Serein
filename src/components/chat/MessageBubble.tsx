@@ -1,3 +1,7 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
+
 interface MessageBubbleProps {
   role: "user" | "assistant";
   content: string;
@@ -14,7 +18,9 @@ export function MessageBubble({ role, content }: MessageBubbleProps) {
             : "text-[var(--text-primary)]"
         }`}
       >
-        {content}
+        <div className="message-markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{content}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
